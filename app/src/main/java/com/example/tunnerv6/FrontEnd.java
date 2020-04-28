@@ -1,5 +1,6 @@
 package com.example.tunnerv6;
 
+import android.annotation.SuppressLint;
 import android.widget.TextView;
 
 public class FrontEnd implements Runnable{
@@ -20,9 +21,10 @@ public class FrontEnd implements Runnable{
 
             final int finalA = a;
             tv.post(new Runnable() {
+                @SuppressLint("SetTextI18n")
                 @Override
                 public void run() {
-                    tv.setText(String.valueOf(finalA));
+                    tv.setText("get num: " + String.valueOf(finalA));
                 }
             });
             a++;
