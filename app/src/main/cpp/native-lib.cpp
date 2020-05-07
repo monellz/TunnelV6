@@ -37,6 +37,61 @@ void write_msg(int fd, const msg_t& msg) {
     writen(fd, &msg, msg.len);
 }
 
+void* request_worker(void* arg) {
+    int vpn_fd = ((int*)arg)[0];
+    int sockfd = ((int*)arg)[1];
+
+    int total_len = 0;
+    int total_time = 0;
+
+    msg_t msg;
+    msg.type = 102;
+    while (true) {
+        int nread = 0;
+        if ((nread = read(vpn_fd, msg.data, PAGE_SIZE)) <= 0) {
+            if (errno == EAGAIN) continue;
+            LOGE("nread < 0??: %s", strerror(errno));
+            return NULL;
+        }
+        total_time++;
+        total_len += nread;
+        msg.len = offsetof(msg_t, data) + nread;
+        write_msg(sockfd, msg);
+    }
+}
+
+void respond_worker(int vpn_fd, int sockfd) {
+    msg_t msg;
+
+    int total_len = 0;
+    int total_time = 0;
+
+    while (true) {
+        read_msg(sockfd, msg);
+        switch (msg.type) {
+            case 101: {
+                LOGE("repeated type: %d", msg.type);
+                break;
+            };
+            case 103: {
+                size_t len = msg.len - offsetof(msg_t, data);
+                total_time++;
+                total_len += len;
+                writen(vpn_fd, msg.data, len);
+                break;
+            }
+            case 104: {
+                LOGI("keepalive");
+                break;
+            }
+            default: {
+                LOGE("unknown type: %d", msg.type);
+                return;
+            }
+        }
+    }
+}
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_example_tunnelv6_MainActivity_backend_1entry(JNIEnv *env, jobject thiz, jstring dir) {
@@ -80,5 +135,28 @@ Java_com_example_tunnelv6_MainActivity_backend_1entry(JNIEnv *env, jobject thiz,
     writen(backend_fd, buf, buf_len);
 
     LOGI("write pip done");
+
+    //receive vpn_fd from frontend
+    int vpn_fd = -1;
+    LOGI("prepare to read vpn_fd");
+    //readn(frontend_fd, &vpn_fd, sizeof(int));
+    int nread = 0;
+    nread = read(frontend_fd, &vpn_fd, sizeof(int));
+
+    //sleep(5);
+    LOGI("receive vpn_fd: %d, nread: %d", vpn_fd, nread);
+    //return;
+
+
+
+    //request thread
+    pthread_t thread;
+    int fds[2] = {vpn_fd, sockfd};
+    pthread_create(&thread, NULL, request_worker, fds);
+
+    respond_worker(vpn_fd, sockfd);
+
+    pthread_join(thread, NULL);
+
     Close(sockfd);
 }

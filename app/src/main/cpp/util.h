@@ -7,6 +7,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
+
 
 #define TAG "[TEST_TAG from c++]"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)

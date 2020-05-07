@@ -4,10 +4,14 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.VpnService;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.example.tunnelv6.R;
 
@@ -19,13 +23,14 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 
 public class FrontEnd implements Runnable{
     TextView tv;
     MainActivity main;
     String dir;
     BufferedInputStream ip_info_backend;
-    BufferedOutputStream ip_info_frontend;
+
     FrontEnd(TextView t, MainActivity m, String d) {
         tv = t;
         dir = d;
@@ -34,7 +39,6 @@ public class FrontEnd implements Runnable{
 
     private void file_init() {
         File backend = new File(dir, Constants.IP_INFO_BACKEND);
-        File frontend = new File(dir, Constants.IP_INFO_FRONTEND);
         while (!backend.exists()) {
             Log.w(Constants.TAG, backend.getAbsolutePath() + " not exist");
             try {
@@ -43,28 +47,17 @@ public class FrontEnd implements Runnable{
                 e.printStackTrace();
             }
         }
-        while (!frontend.exists()) {
-            Log.w(Constants.TAG, frontend.getAbsolutePath() + " not exist");
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+
 
         FileInputStream f_in = null;
-        FileOutputStream f_out = null;
         try {
             f_in = new FileInputStream(backend);
-            f_out = new FileOutputStream(frontend);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
 
         assert f_in != null;
-        assert f_out != null;
         ip_info_backend = new BufferedInputStream(f_in);
-        ip_info_frontend = new BufferedOutputStream(f_out);
     }
 
     private String[] read_ip_metadata() {
@@ -121,9 +114,11 @@ public class FrontEnd implements Runnable{
             }
         });
 
+
         //start vpn service
         main.startVPN(info);
 
+        Log.i(Constants.TAG, "vpn start done");
         //flush the screen every 1 second
         int a = 1;
         while (true) {

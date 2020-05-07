@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.VpnService;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Parcelable;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -109,9 +111,6 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent (this, TunnelVpn.class);
 
             String[] info = data.getStringArrayExtra("info");
-            if (info == null) {
-                Log.e(Constants.TAG, "in onactivityresult info == null??/");
-            }
             intent.putExtra("info", info);
             Log.i(Constants.TAG, "start service!!!");
             startService(intent);
