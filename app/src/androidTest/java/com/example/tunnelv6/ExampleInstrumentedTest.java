@@ -1,4 +1,4 @@
-package com.example.tunnerv6;
+package com.example.tunnelv6;
 
 import android.content.Context;
 
@@ -22,6 +22,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        assertEquals("com.example.tunnerv6", appContext.getPackageName());
+        assertEquals("com.example.tunnelv6", appContext.getPackageName());
     }
 }

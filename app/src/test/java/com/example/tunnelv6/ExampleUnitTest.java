@@ -1,4 +1,4 @@
-package com.example.tunnerv6;
+package com.example.tunnelv6;
 
 import org.junit.Test;
 

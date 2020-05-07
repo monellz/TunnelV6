@@ -5,7 +5,7 @@ android {
     buildToolsVersion "29.0.3"
 
     defaultConfig {
-        applicationId "com.example.tunnerv6"
+        applicationId "com.example.tunnelv6"
         minSdkVersion 28
         targetSdkVersion 29
         versionCode 1
