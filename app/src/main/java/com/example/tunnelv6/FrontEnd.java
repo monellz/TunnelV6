@@ -1,6 +1,9 @@
 package com.example.tunnelv6;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.Intent;
+import android.net.VpnService;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -19,11 +22,11 @@ import java.util.Arrays;
 
 public class FrontEnd implements Runnable{
     TextView tv;
-    AppCompatActivity main;
+    MainActivity main;
     String dir;
     BufferedInputStream ip_info_backend;
     BufferedOutputStream ip_info_frontend;
-    FrontEnd(TextView t, AppCompatActivity m, String d) {
+    FrontEnd(TextView t, MainActivity m, String d) {
         tv = t;
         dir = d;
         main = m;
@@ -73,7 +76,9 @@ public class FrontEnd implements Runnable{
             e.printStackTrace();
         }
 
-        String res = new String(Arrays.copyOfRange(buf, 0, buf_len - 1));
+        String res = new String(Arrays.copyOfRange(buf, 0, buf_len));
+        Log.i(Constants.TAG, "receive: " + res);
+        Log.i(Constants.TAG, "receive len: " + String.valueOf(buf_len));
         return res.split(" ");
     }
 
@@ -88,7 +93,9 @@ public class FrontEnd implements Runnable{
             Log.i(Constants.TAG, "\t" + s);
         }
 
-        assert info.length == 5;
+        assert info.length == 6;
+
+
         //update text
         final TextView ip_view = main.findViewById(R.id.ip_text);
         final TextView route_view = main.findViewById(R.id.route_text);
@@ -114,7 +121,8 @@ public class FrontEnd implements Runnable{
             }
         });
 
-
+        //start vpn service
+        main.startVPN(info);
 
         //flush the screen every 1 second
         int a = 1;

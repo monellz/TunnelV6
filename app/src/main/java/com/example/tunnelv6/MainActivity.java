@@ -1,8 +1,11 @@
 package com.example.tunnelv6;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.VpnService;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
@@ -10,6 +13,7 @@ import android.widget.TextView;
 import com.example.tunnelv6.R;
 
 import java.io.File;
+import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
     // Used to load the 'native-lib' library on application startup.
@@ -76,7 +80,44 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public void startVPN(String[] info) {
+        Log.i(Constants.TAG, "into startVPN info: " + Arrays.toString(info));
+        Intent vpn_intent = VpnService.prepare(MainActivity.this);
+        if (vpn_intent != null) {
+            Log.i(Constants.TAG, "intent != null");
+            if (info == null) {
+                Log.e(Constants.TAG, "in startVPN info == null??/");
+            }
 
+            vpn_intent.putExtra("info", info);
+
+            startActivityForResult(vpn_intent, Constants.VPN_REQUEST_CODE);
+            Log.i(Constants.TAG, "startActivityfor result done");
+        } else {
+            Log.i(Constants.TAG, "intent == null");
+            Log.d(Constants.TAG, "(intent==null) info: "+ Arrays.toString(info));
+            Intent data = new Intent(MainActivity.this, VpnService.class);
+
+            data.putExtra("info", info);
+            onActivityResult(Constants.VPN_REQUEST_CODE, RESULT_OK, data);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == Constants.VPN_REQUEST_CODE && resultCode == RESULT_OK) {
+            Intent intent = new Intent (this, TunnelVpn.class);
+
+            String[] info = data.getStringArrayExtra("info");
+            if (info == null) {
+                Log.e(Constants.TAG, "in onactivityresult info == null??/");
+            }
+            intent.putExtra("info", info);
+            Log.i(Constants.TAG, "start service!!!");
+            startService(intent);
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
     /**
      * A native method that is implemented by the 'native-lib' native library,
      * which is packaged with this application.

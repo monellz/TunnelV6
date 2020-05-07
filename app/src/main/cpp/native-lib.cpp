@@ -73,6 +73,10 @@ Java_com_example_tunnelv6_MainActivity_backend_1entry(JNIEnv *env, jobject thiz,
     strcpy(buf, msg.data);
     buf_len = strlen(msg.data);
 
+    sprintf(buf + buf_len - 1, " %d\0", sockfd);
+    buf_len = strlen(buf);
+
+    LOGI("buf: %s", buf);
     writen(backend_fd, buf, buf_len);
 
     LOGI("write pip done");
