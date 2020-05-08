@@ -24,19 +24,20 @@ public class TunnelVpn extends VpnService {
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.i(Constants.TAG, "vpn on create");
+        Logger.i("vpn on create");
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.i(Constants.TAG, "vpn on start command");
+        Logger.i("vpn on start command");
         String[] info = intent.getStringArrayExtra("info");
         if (info == null) {
-            Log.e(Constants.TAG, "info == null ?????");
+            Logger.e("info == null ?????");
             return super.onStartCommand(intent, flags, startId);
         }
         assert info != null;
         final int vpn_fd = establishVPN(info);
+        Logger.i("establish vpn_fd: "+ String.valueOf(vpn_fd));
 
         new Thread(new Runnable() {
             @Override
@@ -45,18 +46,18 @@ public class TunnelVpn extends VpnService {
                 File dir = new File(getApplicationInfo().dataDir);
                 File frontend = new File(dir.getAbsoluteFile(), Constants.IP_INFO_FRONTEND);
                 while (!frontend.exists()) {
-                    Log.w(Constants.TAG, frontend.getAbsolutePath() + " not exist");
+                    Logger.w(frontend.getAbsolutePath() + " not exist");
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        Logger.e(e.getMessage(), e);
                     }
                 }
                 FileOutputStream f_out = null;
                 try {
                     f_out = new FileOutputStream(frontend);
                 } catch (FileNotFoundException e) {
-                    e.printStackTrace();
+                    Logger.e(e.getMessage(), e);
                 }
 
                 assert f_out != null;
@@ -65,16 +66,18 @@ public class TunnelVpn extends VpnService {
                 bb.order(ByteOrder.LITTLE_ENDIAN);
                 bb.putInt(vpn_fd);
                 byte[] buf = bb.array();
-                Log.i(Constants.TAG, "buf: " + Arrays.toString(buf));
+                Logger.i("buf: " + Arrays.toString(buf));
                 try {
                     ip_info_frontend.write(buf);
                     ip_info_frontend.flush();
+                    f_out.flush();
                     ip_info_frontend.close();
+                    f_out.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
-                    Log.e(Constants.TAG, "pipe write error");
+                    Logger.e(e.getMessage(), e);
                 }
-                Log.i(Constants.TAG, "vpn_fd write done");
+                Logger.i("vpn_fd write done");
+                //while (true) {}
             }
         }).start();
 
@@ -86,25 +89,29 @@ public class TunnelVpn extends VpnService {
         try {
             sockfd = Integer.parseInt(info[5]);
         } catch (NumberFormatException ignored) {
-            Log.e(Constants.TAG, "sockfd not valid: " + info[5]);
+            Logger.e("sockfd not valid: " + info[5]);
+            Logger.e(ignored.getMessage(), ignored);
         }
 
         this.protect(sockfd);
-        Log.i(Constants.TAG, "vpn protect sockfd: " + String.valueOf(sockfd));
+        Logger.i("vpn protect sockfd: " + String.valueOf(sockfd));
         Builder builder = new Builder();
 
         builder.setSession(getString(R.string.app_name));
 
         builder.addAddress(info[0], 32);
+        builder.setMtu(1500);
         builder.addRoute("0.0.0.0", 0);
         builder.addDnsServer(info[2]);
         builder.addDnsServer(info[3]);
         builder.addDnsServer(info[4]);
 
+        Logger.i("vpn has prepared, comming to build");
         ParcelFileDescriptor pfd = builder.establish();
         assert pfd != null;
-        int fd = pfd.getFd();
-        Log.i(Constants.TAG, "vpn fd: " + String.valueOf(fd));
+        //int fd = pfd.getFd();
+        int fd = pfd.detachFd();
+        Logger.i("vpn fd: " + String.valueOf(fd));
         return fd;
     }
 }

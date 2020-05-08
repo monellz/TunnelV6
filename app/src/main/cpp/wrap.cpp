@@ -8,8 +8,13 @@ ssize_t readn(int fd, void* vptr, size_t n) {
     char *ptr = (char *)vptr;
     while (nleft > 0) {
         if ((nread = read(fd, ptr, nleft)) < 0) {
-            if (errno == EINTR) nread = 0;
-            else return -1;
+            if (errno == EINTR) {
+                LOGE("readn interupt");
+                nread = 0;
+            } else {
+                LOGE("readn erro! nread: %d, errno = %s", nread, strerror(errno));
+                return -1;
+            }
         }
 
         nleft -= nread;
@@ -25,8 +30,13 @@ ssize_t writen(int fd, const void *vptr, size_t n) {
     const char *ptr = (const char*) vptr;
     while (nleft > 0) {
         if ((nwritten = write(fd, ptr, nleft)) <= 0) {
-            if (nwritten < 0 && errno == EINTR) nwritten = 0;
-            else return -1;
+            if (nwritten < 0 && errno == EINTR) {
+                LOGW("writen interupt!!");
+                nwritten = 0;
+            } else {
+                LOGE("writen error nwritten = %d, errno = %s", nwritten, strerror(errno));
+                return -1;
+            }
         }
 
         nleft -= nwritten;
