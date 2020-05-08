@@ -32,9 +32,17 @@ public class FrontEnd implements Runnable{
     String dir;
     BufferedInputStream ip_info_backend;
 
+    boolean stop_flag;
+
     FrontEnd(MainActivity m, String d) {
         dir = d;
         main = m;
+
+        stop_flag = false;
+    }
+
+    public void stop() {
+        stop_flag = true;
     }
 
     private void file_init() {
@@ -123,10 +131,9 @@ public class FrontEnd implements Runnable{
 
         //start vpn service
         main.startVPN(info);
-        Logger.i("vpn start done");
+        Logger.i("vpn start done, stop_flag = " + String.valueOf(stop_flag));
 
-        //flush the screen every 1 second
-        while (true) {
+        while (!stop_flag) {
             byte[] buf = new byte[Constants.PAGE_SIZE];
             int buf_len = 0;
             try {
@@ -150,5 +157,7 @@ public class FrontEnd implements Runnable{
             setText(main.download_time_text, infos[2]);
             setText(main.download_len_text, infos[3]);
         }
+
+        Logger.w("frontend done");
     }
 }

@@ -23,7 +23,8 @@
 extern char IP_INFO_BACKEND[128];
 extern char IP_INFO_FRONTEND[128];
 
-//#define OFFICIAL
+/*
+#define OFFICIAL
 
 #ifdef OFFICIAL
 #define SERVER_IPV6 "2402:f000:4:72:808::9a47"
@@ -33,6 +34,7 @@ extern char IP_INFO_FRONTEND[128];
 //#define SERVER_IPV6 "2001:19f0:5c01:46d:5400:2ff:fe56:c803"
 #define SERVER_PORT 38324
 #endif
+ */
 
 
 struct msg_t {

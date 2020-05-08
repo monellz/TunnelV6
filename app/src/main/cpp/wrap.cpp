@@ -107,17 +107,12 @@ void Inet_pton(int family, const char* strptr, void *addrptr) {
 }
 
 void Mkfifo(const char* path, mode_t mode) {
-    //if (mknod(path, mode, dev) < 0) {
     if (mkfifo(path, mode) < 0) {
         if (errno == EEXIST) {
             LOGW("pipe %s has created before", path);
         } else {
-            //LOGE("create pip %s error", path);
-            //LOGE("\terror: %s", strerror(errno));
-            char buf[4096] = "";
-            LOGE("pwd: %s", getcwd(buf, sizeof(buf)));
             LOGE("mkfifo %s error: %s", path, strerror(errno));
-            //exit(0);
+            exit(0);
         }
     }
 }

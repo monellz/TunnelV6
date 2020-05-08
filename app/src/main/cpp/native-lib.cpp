@@ -48,6 +48,20 @@ void write_msg(int fd, const msg_t& msg) {
     writen(fd, &msg, msg.len);
 }
 
+void* disconnect_worker(void* arg) {
+    thread_arg_t* a = (thread_arg_t*)arg;
+    int frontend_fd = a->frontend_fd;
+    int flag = 0;
+    while (a->running) {
+        readn(frontend_fd, &flag, sizeof(int));
+        if (flag == -1) {
+            //disconnect
+            a->running = false;
+            LOGW("disconnect request by frontend");
+        }
+    }
+}
+
 void* timer_worker(void* arg) {
     thread_arg_t* a = (thread_arg_t*)arg;
     int backend_fd = a->backend_fd;
@@ -68,6 +82,7 @@ void* timer_worker(void* arg) {
         sprintf(buf, "%d %d %d %d", upload_time, upload_len, download_time, download_len);
         buf_len = strlen(buf);
         writen(backend_fd, buf, buf_len);
+        LOGI("send ip info to frontend: %s", buf);
 
         unsigned long long last_keepalive = keepalive_time;
         gettimeofday(&tv, NULL);
@@ -131,6 +146,7 @@ void respond_worker(thread_arg_t* arg) {
                 total_write_time++;
                 total_write_len += len;
 
+                /*
                 char buf[4096] = "";
                 int p = 0;
                 for (int i = 0;i < len; ++i) {
@@ -139,6 +155,7 @@ void respond_worker(thread_arg_t* arg) {
                     p += n;
                 }
                 LOGW("!!!buf: %s", buf);
+                 */
 
                 writen(vpn_fd, msg.data, len);
                 break;
@@ -162,7 +179,7 @@ void respond_worker(thread_arg_t* arg) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_example_tunnelv6_MainActivity_backend_1entry(JNIEnv *env, jobject thiz, jstring dir) {
+Java_com_example_tunnelv6_MainActivity_backend_1entry(JNIEnv *env, jobject thiz, jstring dir, jstring ipv6_addr, jint port) {
     LOGI("into backend entry");
 
     dir_init(env->GetStringUTFChars(dir, NULL));
@@ -175,8 +192,8 @@ Java_com_example_tunnelv6_MainActivity_backend_1entry(JNIEnv *env, jobject thiz,
     struct sockaddr_in6 server_addr;
     sockfd = Socket(AF_INET6, SOCK_STREAM, 0);
     server_addr.sin6_family = AF_INET6;
-    server_addr.sin6_port = htons(SERVER_PORT);
-    Inet_pton(AF_INET6, SERVER_IPV6, &server_addr.sin6_addr);
+    server_addr.sin6_port = htons(port);
+    Inet_pton(AF_INET6, env->GetStringUTFChars(ipv6_addr, NULL), &server_addr.sin6_addr);
     Connect(sockfd, (struct sockaddr*)&server_addr, sizeof(struct sockaddr_in6));
     LOGI("connect succ");
 
@@ -199,7 +216,9 @@ Java_com_example_tunnelv6_MainActivity_backend_1entry(JNIEnv *env, jobject thiz,
     strcpy(buf, msg.data);
     buf_len = strlen(msg.data);
 
-    sprintf(buf + buf_len, " %d\0", sockfd);
+    char tmp[100] = "";
+    sprintf(tmp, "%d", sockfd);
+    strcat(buf, tmp);
     buf_len = strlen(buf);
 
     LOGI("buf: %s", buf);
@@ -236,14 +255,16 @@ Java_com_example_tunnelv6_MainActivity_backend_1entry(JNIEnv *env, jobject thiz,
     arg.vpn_fd = vpn_fd;
     arg.frontend_fd = frontend_fd;
     arg.backend_fd = backend_fd;
-    pthread_t request_thread, timer_thread;
+    pthread_t request_thread, timer_thread, disconnect_thread;
 
     pthread_create(&request_thread, NULL, request_worker, &arg);
     pthread_create(&timer_thread, NULL, timer_worker, &arg);
+    pthread_create(&disconnect_thread, NULL, disconnect_worker, &arg);
     respond_worker(&arg);
 
     pthread_join(request_thread, NULL);
     pthread_join(timer_thread, NULL);
+    pthread_join(disconnect_thread, NULL);
 
     //Close(sockfd);
     //Close(vpn_fd);
