@@ -15,6 +15,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -50,6 +51,8 @@ public class MainActivity extends AppCompatActivity {
 
     String[] ip_info;
 
+    Intent vpn_service;
+
     private void setDisable(int id) {
         EditText label = findViewById(id);
         label.setClickable(false);
@@ -57,47 +60,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void init_view() {
-        setDisable(R.id.ip_label);
-        setDisable(R.id.route_label);
-        setDisable(R.id.dns_label);
-        setDisable(R.id.upload_time_label);
-        setDisable(R.id.upload_len_label);
-        setDisable(R.id.download_time_label);
-        setDisable(R.id.download_len_label);
-        setDisable(R.id.ipv6_addr_label);
-        setDisable(R.id.port_label);
-
-        ipv6_addr_text = findViewById(R.id.ipv6_addr_text);
-        port_text = findViewById(R.id.port_text);
-
-        ipv6_addr_text.setText(Constants.IPV6_ADDR);
-        port_text.setText(Constants.PORT);
-
-        ip_text = findViewById(R.id.ip_text);
-        route_text = findViewById(R.id.route_text);
-        dns_text = new TextView[3];
-        dns_text[0] = findViewById(R.id.dns1_text);
-        dns_text[1] = findViewById(R.id.dns2_text);
-        dns_text[2] = findViewById(R.id.dns3_text);
-        upload_time_text = findViewById(R.id.upload_time_text);
-        upload_len_text = findViewById(R.id.upload_len_text);
-        download_time_text = findViewById(R.id.download_time_text);
-        download_len_text = findViewById(R.id.download_len_text);
-
-        connect_btn = findViewById(R.id.connect_btn);
-        disconnect_btn = findViewById(R.id.disconnect_btn);
-
-        ip_text.setText("");
-        route_text.setText("");
-        for (TextView t: dns_text) {
-            t.setText("");
-        }
-        upload_time_text.setText("");
-        upload_len_text.setText("");
-        download_time_text.setText("");
-        download_len_text.setText("");
-
-
+        text_clear();
         connect_btn.setClickable(false);
         disconnect_btn.setClickable(false);
 
@@ -147,50 +110,93 @@ public class MainActivity extends AppCompatActivity {
                 connect_btn.setClickable(true);
                 disconnect_btn.setClickable(false);
 
-                //write -1 to backend
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        File dir = new File(getApplicationInfo().dataDir);
-                        File frontend = new File(dir.getAbsoluteFile(), Constants.IP_INFO_FRONTEND);
-                        while (!frontend.exists()) {
-                            Logger.w(frontend.getAbsolutePath() + " not exist");
-                            try {
-                                Thread.sleep(1000);
-                            } catch (InterruptedException e) {
-                                Logger.e(e.getMessage(), e);
-                            }
-                        }
-                        FileOutputStream f_out = null;
-                        try {
-                            f_out = new FileOutputStream(frontend);
-                        } catch (FileNotFoundException e) {
-                            Logger.e(e.getMessage(), e);
-                        }
-
-                        assert f_out != null;
-                        BufferedOutputStream ip_info_frontend = new BufferedOutputStream(f_out);
-                        ByteBuffer bb = ByteBuffer.allocate(4);
-                        bb.order(ByteOrder.LITTLE_ENDIAN);
-                        bb.putInt(Constants.DISCONNECT_FLAG);
-                        byte[] buf = bb.array();
-                        //Logger.i("buf: " + Arrays.toString(buf));
-                        try {
-                            ip_info_frontend.write(buf);
-                            ip_info_frontend.flush();
-                            f_out.flush();
-                            ip_info_frontend.close();
-                            f_out.close();
-                        } catch (IOException e) {
-                            Logger.e(e.getMessage(), e);
-                        }
-                        Logger.i("disconnect flag write done");
+                Logger.i("DISCONNECT prepare to stop");
+                File dir = new File(getApplicationInfo().dataDir);
+                File frontend_file = new File(dir.getAbsoluteFile(), Constants.IP_INFO_FRONTEND);
+                while (!frontend_file.exists()) {
+                    Logger.w(frontend_file.getAbsolutePath() + " not exist");
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        Logger.e(e.getMessage(), e);
                     }
-                }).start();
+                }
+                Logger.i("find frontend pipe");
+                FileOutputStream f_out = null;
+                try {
+                    f_out = new FileOutputStream(frontend_file);
+                } catch (FileNotFoundException e) {
+                    Logger.e(e.getMessage(), e);
+                }
 
+                assert f_out != null;
+                BufferedOutputStream ip_info_frontend = new BufferedOutputStream(f_out);
+                ByteBuffer bb = ByteBuffer.allocate(4);
+                bb.order(ByteOrder.LITTLE_ENDIAN);
+                bb.putInt(Constants.DISCONNECT_FLAG);
+                byte[] buf = bb.array();
+                //Logger.i("buf: " + Arrays.toString(buf));
+                try {
+                    ip_info_frontend.write(buf);
+                    ip_info_frontend.flush();
+                    f_out.flush();
+                    ip_info_frontend.close();
+                    f_out.close();
+                } catch (IOException e) {
+                    Logger.e(e.getMessage(), e);
+                }
+                Logger.i("disconnect flag write done");
+                Intent intent = new Intent("stop_kill");
+                LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(intent);
                 frontend.stop();
+
+
+                //clear text
+                MainActivity.this.text_clear();
             }
         });
+    }
+
+    public void text_clear() {
+        setDisable(R.id.ip_label);
+        setDisable(R.id.route_label);
+        setDisable(R.id.dns_label);
+        setDisable(R.id.upload_time_label);
+        setDisable(R.id.upload_len_label);
+        setDisable(R.id.download_time_label);
+        setDisable(R.id.download_len_label);
+        setDisable(R.id.ipv6_addr_label);
+        setDisable(R.id.port_label);
+
+        ipv6_addr_text = findViewById(R.id.ipv6_addr_text);
+        port_text = findViewById(R.id.port_text);
+
+        ipv6_addr_text.setText(Constants.IPV6_ADDR);
+        port_text.setText(Constants.PORT);
+
+        ip_text = findViewById(R.id.ip_text);
+        route_text = findViewById(R.id.route_text);
+        dns_text = new TextView[3];
+        dns_text[0] = findViewById(R.id.dns1_text);
+        dns_text[1] = findViewById(R.id.dns2_text);
+        dns_text[2] = findViewById(R.id.dns3_text);
+        upload_time_text = findViewById(R.id.upload_time_text);
+        upload_len_text = findViewById(R.id.upload_len_text);
+        download_time_text = findViewById(R.id.download_time_text);
+        download_len_text = findViewById(R.id.download_len_text);
+
+        connect_btn = findViewById(R.id.connect_btn);
+        disconnect_btn = findViewById(R.id.disconnect_btn);
+
+        ip_text.setText("");
+        route_text.setText("");
+        for (TextView t: dns_text) {
+            t.setText("");
+        }
+        upload_time_text.setText("");
+        upload_len_text.setText("");
+        download_time_text.setText("");
+        download_len_text.setText("");
     }
 
     private void init_log() {
@@ -201,7 +207,7 @@ public class MainActivity extends AppCompatActivity {
                 Logger.e("cannot create app_dir");
             }
         }
-        Logger.init(app_dir.getAbsolutePath());
+        //Logger.init(app_dir.getAbsolutePath());
     }
 
     @Override
@@ -256,10 +262,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == Constants.VPN_REQUEST_CODE && resultCode == RESULT_OK) {
-            Intent intent = new Intent (this, TunnelVpn.class);
-            intent.putExtra("info", ip_info);
+            vpn_service = new Intent (this, TunnelVpn.class);
+            vpn_service.putExtra("info", ip_info);
             Logger.i("start service!");
-            startService(intent);
+            startService(vpn_service);
         }
     }
     /**

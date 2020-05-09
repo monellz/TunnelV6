@@ -1,31 +1,14 @@
 package com.example.tunnelv6;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.content.ComponentName;
-import android.content.Intent;
-import android.net.VpnService;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
-import android.util.Log;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
-
-import com.example.tunnelv6.R;
-
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Objects;
-import java.util.Vector;
 
 public class FrontEnd implements Runnable{
     MainActivity main;
@@ -137,8 +120,14 @@ public class FrontEnd implements Runnable{
             byte[] buf = new byte[Constants.PAGE_SIZE];
             int buf_len = 0;
             try {
-                buf_len = ip_info_backend.read(buf);
-            } catch (IOException e) {
+                if (ip_info_backend.available() > 0) {
+                    buf_len = ip_info_backend.read(buf);
+                } else {
+                    Thread.sleep(500);
+                    continue;
+                }
+            } catch (IOException | InterruptedException e) {
+                Logger.e("in frontend read error!????");
                 Logger.e(e.getMessage(), e);
             }
 
@@ -152,12 +141,17 @@ public class FrontEnd implements Runnable{
             assert infos.length == 4;
 
             //update text
-            setText(main.upload_time_text, infos[0]);
-            setText(main.upload_len_text, infos[1]);
-            setText(main.download_time_text, infos[2]);
-            setText(main.download_len_text, infos[3]);
+            setText(main.upload_time_text, infos[0] + " packets");
+            setText(main.upload_len_text, infos[1] + " bytes");
+            setText(main.download_time_text, infos[2] + " packets");
+            setText(main.download_len_text, infos[3] + " bytes");
         }
 
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         Logger.w("frontend done");
     }
 }

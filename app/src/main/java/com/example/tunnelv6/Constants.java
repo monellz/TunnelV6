@@ -9,5 +9,6 @@ class Constants {
      static final int RW_EXTERNAL_STORAGE_REQUEST_CODE = 2;
      static final int DISCONNECT_FLAG = -1;
      static final String IPV6_ADDR = "2402:f000:4:72:808::9a47";
+     //static final String IPV6_ADDR = "2001:19f0:5c01:46d:5400:2ff:fe56:c803";
      static final String PORT = "5678";
 }

@@ -1,29 +1,40 @@
 package com.example.tunnelv6;
 
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.VpnService;
-import android.os.Handler;
-import android.os.Message;
 import android.os.ParcelFileDescriptor;
-import android.util.Log;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
 @SuppressLint("Registered")
 public class TunnelVpn extends VpnService {
+    ParcelFileDescriptor pfd;
+    private BroadcastReceiver stopBr = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if ("stop_kill".equals(intent.getAction())) {
+                stopself();
+            }
+        }
+    };
     @Override
     public void onCreate() {
         super.onCreate();
+        LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(this);
+        lbm.registerReceiver(stopBr, new IntentFilter("stop_kill"));
         Logger.i("vpn on create");
     }
 
@@ -107,11 +118,22 @@ public class TunnelVpn extends VpnService {
         builder.addDnsServer(info[4]);
 
         Logger.i("vpn has prepared, comming to build");
-        ParcelFileDescriptor pfd = builder.establish();
+        pfd = builder.establish();
         assert pfd != null;
-        //int fd = pfd.getFd();
-        int fd = pfd.detachFd();
+        int fd = pfd.getFd();
         Logger.i("vpn fd: " + String.valueOf(fd));
         return fd;
+    }
+
+    public void stopself() {
+        Logger.w("vpn onDestroy");
+        try {
+            pfd.close();
+        } catch (IOException e) {
+            Logger.w("????close err");
+            Logger.e(e.getMessage(), e);
+        }
+        Logger.i("vpn close pfd");
+        super.stopSelf();
     }
 }

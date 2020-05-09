@@ -52,14 +52,19 @@ void* disconnect_worker(void* arg) {
     thread_arg_t* a = (thread_arg_t*)arg;
     int frontend_fd = a->frontend_fd;
     int flag = 0;
-    while (a->running) {
+    //while (a->running) {
+    while (true) {
+        LOGI("prepare to read stop_flag");
         readn(frontend_fd, &flag, sizeof(int));
+        LOGW("read stop_flag!! flag = %d", flag);
         if (flag == -1) {
             //disconnect
             a->running = false;
             LOGW("disconnect request by frontend");
+            return NULL;
         }
     }
+    LOGW("disconnect worker done");
 }
 
 void* timer_worker(void* arg) {
@@ -71,7 +76,9 @@ void* timer_worker(void* arg) {
     char buf[4096] = "";
     int buf_len = 0;
     while (a->running) {
+    //while (true) {
         sleep(1);
+        if (!a->running) break;
         //send info to frontend
         memset(buf, 0, sizeof(buf));
         //upload_time upload_len download_time download_len
@@ -81,6 +88,8 @@ void* timer_worker(void* arg) {
         int download_len = total_write_len;
         sprintf(buf, "%d %d %d %d", upload_time, upload_len, download_time, download_len);
         buf_len = strlen(buf);
+        LOGI("to write ip info to frontend: %s", buf);
+        //if (!a->running) break;
         writen(backend_fd, buf, buf_len);
         LOGI("send ip info to frontend: %s", buf);
 
@@ -93,6 +102,7 @@ void* timer_worker(void* arg) {
         } else {
             if (current - last_send >= 20) {
                 //send keepalive
+                LOGI("send keepalive to remote server");
                 msg_t msg;
                 msg.type = 104;
                 msg.len = offsetof(msg_t, data);
@@ -101,6 +111,8 @@ void* timer_worker(void* arg) {
             }
         }
     }
+    LOGW("timer worker done");
+    return NULL;
 }
 
 void* request_worker(void* arg) {
@@ -112,6 +124,7 @@ void* request_worker(void* arg) {
     msg_t msg;
     msg.type = 102;
     while (a->running) {
+    //while (true) {
         int nread = 0;
         if ((nread = read(vpn_fd, msg.data, PAGE_SIZE)) <= 0) {
             if (errno == EAGAIN) continue;
@@ -125,6 +138,8 @@ void* request_worker(void* arg) {
         write_msg(sockfd, msg);
         LOGI("102 net request write from vpn read len: %d", nread);
     }
+    LOGW("request worker done");
+    return NULL;
 }
 
 void respond_worker(thread_arg_t* arg) {
@@ -135,6 +150,7 @@ void respond_worker(thread_arg_t* arg) {
 
     while (arg->running) {
         read_msg(sockfd, msg);
+        if (!arg->running) break;
         switch (msg.type) {
             case 101: {
                 LOGE("101 repeated type: %d", msg.type);
@@ -145,17 +161,6 @@ void respond_worker(thread_arg_t* arg) {
                 size_t len = msg.len - offsetof(msg_t, data);
                 total_write_time++;
                 total_write_len += len;
-
-                /*
-                char buf[4096] = "";
-                int p = 0;
-                for (int i = 0;i < len; ++i) {
-                    int n = sprintf(&buf[p], "%02x", msg.data[i]);
-                    //LOGW("i = %d, buf: %s", i, buf);
-                    p += n;
-                }
-                LOGW("!!!buf: %s", buf);
-                 */
 
                 writen(vpn_fd, msg.data, len);
                 break;
@@ -175,6 +180,7 @@ void respond_worker(thread_arg_t* arg) {
             }
         }
     }
+    LOGW("respond worker done");
 }
 
 extern "C"
@@ -266,8 +272,8 @@ Java_com_example_tunnelv6_MainActivity_backend_1entry(JNIEnv *env, jobject thiz,
     pthread_join(timer_thread, NULL);
     pthread_join(disconnect_thread, NULL);
 
-    //Close(sockfd);
+    Close(sockfd);
     //Close(vpn_fd);
-    //Close(backend_fd);
-    //Close(frontend_fd);
+    Close(backend_fd);
+    Close(frontend_fd);
 }
