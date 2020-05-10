@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.net.VpnService;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -53,6 +54,8 @@ public class MainActivity extends AppCompatActivity {
 
     Intent vpn_service;
 
+    Handler handler = new Handler();
+
     private void setDisable(int id) {
         EditText label = findViewById(id);
         label.setClickable(false);
@@ -93,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
                 disconnect_btn.setClickable(true);
 
                 final File app_dir = new File(getApplicationInfo().dataDir);
-                MainActivity.this.frontend = new FrontEnd(MainActivity.this, app_dir.getAbsolutePath());
+                MainActivity.this.frontend = new FrontEnd(MainActivity.this, app_dir.getAbsolutePath(), handler);
                 new Thread(MainActivity.this.frontend).start();
                 new Thread(new Runnable() {
                     @Override

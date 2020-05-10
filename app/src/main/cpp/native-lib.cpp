@@ -200,9 +200,15 @@ Java_com_example_tunnelv6_MainActivity_backend_1entry(JNIEnv *env, jobject thiz,
     server_addr.sin6_family = AF_INET6;
     server_addr.sin6_port = htons(port);
     Inet_pton(AF_INET6, env->GetStringUTFChars(ipv6_addr, NULL), &server_addr.sin6_addr);
-    Connect(sockfd, (struct sockaddr*)&server_addr, sizeof(struct sockaddr_in6));
+    //Connect(sockfd, (struct sockaddr*)&server_addr, sizeof(struct sockaddr_in6));
+    if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(struct sockaddr_in6)) < 0) {
+        LOGE("connection error");
+        //send -1 to frontend and return
+        int r = -1;
+        writen(backend_fd, &r, sizeof(r));
+        return;
+    }
     LOGI("connect succ");
-
 
     //send IP request
     msg_t msg;

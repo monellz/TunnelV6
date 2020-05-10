@@ -1,7 +1,10 @@
 package com.example.tunnelv6;
 
 import android.annotation.SuppressLint;
+import android.os.Handler;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AlertDialog;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -16,10 +19,12 @@ public class FrontEnd implements Runnable{
     BufferedInputStream ip_info_backend;
 
     boolean stop_flag;
+    Handler handler;
 
-    FrontEnd(MainActivity m, String d) {
+    FrontEnd(MainActivity m, String d, Handler handler) {
         dir = d;
         main = m;
+        this.handler = handler;
 
         stop_flag = false;
     }
@@ -51,13 +56,20 @@ public class FrontEnd implements Runnable{
         ip_info_backend = new BufferedInputStream(f_in);
     }
 
-    private String[] read_ip_metadata() {
+    private String[] read_ip_metadata(Boolean[] connect_res) {
         byte[] buf = new byte[Constants.PAGE_SIZE];
         int buf_len = 0;
         try {
             buf_len = ip_info_backend.read(buf);
         } catch (IOException e) {
             Logger.e(e.getMessage(), e);
+        }
+
+        if (buf_len == 4) {
+            //error!!!
+            //connection refused
+            connect_res[0] = false;
+            return new String[]{""};
         }
 
         String res = new String(Arrays.copyOfRange(buf, 0, buf_len));
@@ -81,7 +93,35 @@ public class FrontEnd implements Runnable{
         Logger.i("frontend start");
         file_init();
 
-        final String[] info = read_ip_metadata();
+        Boolean[] connect_res = new Boolean[] {true};
+        final String[] info = read_ip_metadata(connect_res);
+        if (!connect_res[0]) {
+            Logger.e("CONNECTION ERROR");
+            this.handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    new AlertDialog.Builder(main)
+                            .setTitle("错误")
+                            .setMessage("连接错误，请检查ip与端口")
+                            .setPositiveButton("Ok", null)
+                            .show();
+                }
+            });
+            main.connect_btn.post(new Runnable() {
+                @Override
+                public void run() {
+                    main.connect_btn.setClickable(true);
+                }
+            });
+            main.disconnect_btn.post(new Runnable() {
+                @Override
+                public void run() {
+                    main.disconnect_btn.setClickable(false);
+                }
+            });
+            return;
+        }
+
         for (String s: info) {
             Logger.i("\t" + s);
         }
